@@ -6,4 +6,4 @@
 
 ## How do I use it?
 
-### Make sure you have the latest stable version of AutoHotkey installed, then run the program. Pressing `Control` + `Alt` + `Tab` will bring summon the gui toward the bottom of your main screen, from which you can select the desire window arrangement. Click on each window that you want to be a part of that arrangement, and the script will move them for you. You can cancel the operation any time with the `Escape` key.
+### Make sure you have the latest stable version of AutoHotkey installed, then run the program. Pressing `Control` + `Alt` + `Tab` will summon the gui toward the bottom of your main screen, from which you can select the desired window arrangement. Click on each window that you want to be a part of that arrangement, and the script will move them for you. You can cancel the operation any time with the `Escape` key.
