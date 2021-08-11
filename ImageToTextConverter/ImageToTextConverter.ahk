@@ -1,4 +1,3 @@
-
 #SingleInstance, force
 SetTitleMatchMode, 2
 SetWorkingDir,%A_ScriptDir%

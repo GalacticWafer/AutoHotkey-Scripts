@@ -6,11 +6,29 @@
 
 ## How do I use it?
 
+
++ Create GuiControls by specifying x, y, width, height, and (optionally) a `GroupBox` name to positioin the cotrol in its `subGrid`
+  
+```g.add("groupbox", x, y, width, height, groupBoxName)```
+
++ "groupbox" must be the first parameter
++ `x` - the left-most column (indexed by zero) of the control. For example, 0 will place the element as far left as possible within the grid it is placed.
++ `y` - the top-most row (indexed by zero) of the control. For example, 0 will place the element as far toward the top as possible within the grid it is placed.
++ `width` - the number of columns the control will span. 
++ `height` - the number of rows the control will span.
++ `groupBoxName` (Optional) - the name of the groupbox in which to place this control. This allows the control to be placed in a subGrid, even nesting GroupBoxes if desired.
+
+For the `GridLayout` there are two kinds of GuiControls; GroupBoxes and everything else. GroupBoxes are special controls in this API. They are represented by a `GroubBoxObject`, providing a `subGrid` to position GuiControls within.
+
+
+
 Designate NON-OVERLAPPING grid spaces for all `GuiControl`s that you wish to be added to the gui. For example, the following code will produce a GUI equivalent to the template shown in the table:</br>
 
 ```
-; Create GridLayout object and add GroupBoxes to it.
+; Create GridLayout object.
 g := new GridLayout(5, 5)
+
+ 
 g.add("groupbox", 0, 0, 1, 1,"GroupBox 1")
 g.add("groupbox", 1, 0, 1, 1, "GroupBox 2")
 g.add("groupbox", 0, 1, 2, 1, "GroupBox 3")
