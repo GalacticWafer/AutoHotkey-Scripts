@@ -19,40 +19,40 @@ class Element {
 		this.offsetX := this.offsetY := 0
 	}
 	
-	setElementX(columnWidths, offsetX) {
+	setElementX(columnWidths, offsetX, margin) {
 		currentColumn := 1
-		widthToLeft := offsetX
+		widthToLeft := offsetX + margin
 		while(currentColumn < this.startingGridColumn) {
-			widthToLeft  += columnWidths[currentColumn++]
+			widthToLeft  += columnWidths[currentColumn++] + margin
 		}
 		this.elementX := widthToLeft + this.offsetX
 	}
 	
-	setElementY(rowHeights, offsetY) {
+	setElementY(rowHeights, offsetY, margin) {
 		currentRow := 1
-		heigthAbove := offsetY
+		heigthAbove := offsetY + margin
 		while(currentRow < this.startingGridRow) {
-			heigthAbove  += rowHeights[currentRow++]
+			heigthAbove  += rowHeights[currentRow++] + margin
 		}
 		this.elementY := heigthAbove  + this.offsetY
 	}
 	
-	setElementWidth(columnWidths) {
+	setElementWidth(columnWidths, margin) {
 		currentColumn := this.startingGridColumn
 		elementWidth := 0
 		while(currentColumn <= this.startingGridColumn + this.gridWidth - 1) {
 			elementWidth  += columnWidths[currentColumn++]
 		}
-		this.elementWidth := elementWidth
+		this.elementWidth := elementWidth + (this.controlType != "groupbox" ? margin * 2 : 0)
 	}
 	
-	setElementHeight(rowHeights) {
+	setElementHeight(rowHeights, margin) {
 		currentRow := this.startingGridRow
 		elementHeight := 0
 		while(currentRow <= this.startingGridRow + this.gridHeight - 1) {
 			elementHeight  += rowHeights[currentRow++]
 		}
-		this.elementHeight := elementHeight
+		this.elementHeight := elementHeight + (this.controlType = "groupbox" ? margin * 2 : 0)
 	}
 	
 	; Private - resize and reposition the Element by a the given `scaleFactor`
@@ -78,7 +78,7 @@ Class GroupBoxObject extends Element {
  class GridLayout {
 	; PRIVATE - Creates a new Grid layout with the specified number of columns and rows. 
 	; `offsetX` and `offsetY` can be used to place sub-grids recursively inside the main grid
-	__New(columnCount, rowCount, margin:=10, offsetX := 0, offsetY := 0) {
+	__New(columnCount, rowCount, margin:=20, offsetX := 0, offsetY := 0) {
 		this.offsetX := offsetX
 		this.offsetY := offsetY
 		this.guiObjects := {}
@@ -101,23 +101,25 @@ Class GroupBoxObject extends Element {
 	; Creates a new GuiControl in the specified grid position. If a group 
 	; parameter is specified, then the method will be called recursively 
 	; on the  subGrid of  the GroupBoxObject with that name.
-	add(controlType, column, row, w, h, name, group:= "") {		
+	add(controlType, gridX, gridY, gridWidth, gridHeight, elementName, elementWidth:="", elementHeight:="", groupBoxName:="") {
 		; make a GroupBox if the controlType is that.
 		StringLower, controlType, controlType ;lower case the control type for consistency
 		if(controlType = "section" || controlType = "groupbox") {
-			gui, add,% "GroupBox", hwndhwnd,% name
-			newGroup := new GroupBoxObject(row + 1, column + 1, w, h, hwnd, name, controlType)
+			gui, add,% "GroupBox", hwndhwnd,% elementName
+			newGroup := new GroupBoxObject(gridY + 1, gridX + 1, gridWidth, gridHeight, hwnd, elementName, controlType)
 			this.setElement(newGroup)
-			this.groups[name] := newGroup
+			this.groups[elementName] := newGroup
 			
 		 ;  If we passed in some group box name, recurse
-		} else if(group) {
-			subGrid := this.groups[group].subGrid
-			hwnd := subGrid.add(controlType, column, row, w, h, name)
+		} else if(groupBoxName) {
+			subGrid := this.groups[groupBoxName].subGrid
+			hwnd := subGrid.add(controlType, gridX, gridY, gridWidth, gridHeight, elementName)
 		; All other elements are non-recursive, and so are created differently
 		} else {
-			gui, add,% controlType, hwndhwnd,% name
-			this.setElement(new Element(row + 1, column + 1, w, h, hwnd, name, t))
+			gui, add,% controlType,% "hwndhwnd"
+			. (elementWidth ? " w" elementWidth : "")
+			. (elementHeight ? " h" elementHeight : ""), % elementName
+			this.setElement(new Element(gridY + 1, gridX + 1, gridWidth, gridHeight, hwnd, elementName, t))
 		}
 		return %hwnd%
 	}
@@ -129,9 +131,21 @@ Class GroupBoxObject extends Element {
 		columnCount := newElement.startingGridColumn
 		loop % newElement.gridHeight {
 			row := A_Index + newElement.startingGridRow - 1
+			while(row > this.grid.length()) {
+				array := []
+				loop % this.grid[1].length() {
+					array.push("")
+				}
+				this.grid.push(array)
+			}
 			loop % newElement.gridWidth {
 				col := A_Index + newElement.startingGridColumn - 1
-					this.grid[row][col] := newElement.hwnd
+				while(col > this.grid[1].length()) {
+					loop % this.grid.length() {
+						this.grid[A_Index].push("")
+					}
+				}
+				this.grid[row][col] := newElement.hwnd
 			}
 		}
 	}
@@ -178,11 +192,11 @@ Class GroupBoxObject extends Element {
 				widthPerColumn := 0
 			} else {
 				element := this.guiObjects[hwnd]
-				if(element.__Class = "GroupBoxObject") {
-					widthPerColumn :=  element.subGrid.totalWidth() / element.gridWidth
-				} else {
-					widthPerColumn := element.elementWidth / element.gridWidth
-				}
+					if(element.__Class = "GroupBoxObject") {
+						widthPerColumn :=  element.subGrid.totalWidth() / element.gridWidth
+					} else {
+						widthPerColumn := element.elementWidth / element.gridWidth
+					}
 			}
 			maxWidth := max(widthPerColumn, maxWidth)
 		}
@@ -229,11 +243,11 @@ Class GroupBoxObject extends Element {
 				heightPerRow := 0
 			} else {
 				element := this.guiObjects[hwnd]
-				if(element.__Class = "GroupBoxObject") {
-					heightPerRow := element.subGrid.totalHeight() / element.gridHeight
-				} else {
-					heightPerRow  := element.elementHeight / element.gridHeight
-				}
+					if(element.__Class = "GroupBoxObject") {
+						heightPerRow := element.subGrid.totalHeight() / element.gridHeight
+					} else {
+						heightPerRow  := element.elementHeight / element.gridHeight
+					}
 			}
 			maxHeight := max(heightPerRow, maxHeight)
 		}
@@ -252,12 +266,22 @@ Class GroupBoxObject extends Element {
 		loop % this.grid.length() { ; Loop through each column
 			rowHeights.push(this.getRowHeight(A_Index))
 		}
-		
 		for hwnd, element in this.guiObjects {
-			element.setElementX(columnWidths, this.offsetX)
-			element.setElementY(rowHeights, this.offsetY)
-			element.setElementWidth(columnWidths)
-			element.setElementHeight(rowHeights)
+			element.setElementWidth(columnWidths, this.margin)
+			element.setElementHeight(rowHeights, this.margin)
+		}
+		columnWidths := []
+		loop % this.grid[1].length() { ; Loop through each column
+			columnWidths.push(this.getColumnWidth(A_Index))
+		}
+		
+		rowHeights := []
+		loop % this.grid.length() { ; Loop through each column
+			rowHeights.push(this.getRowHeight(A_Index))
+		}
+		for hwnd, element in this.guiObjects {
+			element.setElementX(columnWidths, this.offsetX,  this.margin)
+			element.setElementY(rowHeights, this.offsetY, this.margin)
 			position := "x" element.elementX " y" element.elementY
 			. " w" element.elementWidth " h" element.elementHeight
 			GuiControl, move,% hwnd,% position
@@ -298,27 +322,22 @@ main()
 
 main() {
 	g := new GridLayout(5, 5)
-	g.add("groupbox", 0, 0, 1, 1,"GroupBox 1")
+	g.add("groupbox", 0, 0, 1, 1, "GroupBox 1")
 	g.add("groupbox", 1, 0, 1, 1, "GroupBox 2")
 	g.add("groupbox", 0, 1, 2, 1, "GroupBox 3")
 	
 	
-	hwnd := g.add("button", 0, 0, 1, 1, "Button 1-A", "GroupBox 1")
-	hwnd := g.add("button", 0, 1, 1, 1, "Button 1-B", "GroupBox 1")	
-
-	hwnd := g.add("button", 0, 0, 1, 1, "Button 2-A", "GroupBox 2")
-	hwnd := g.add("button", 1, 0, 1, 1, "Button 2-B", "GroupBox 2")
-	
-	hwnd := g.add("button", 0, 0, 1, 1, "Button 3-A", "GroupBox 3")
-	hwnd := g.add("button", 1, 0, 1, 1, "Button 3-B", "GroupBox 3")
-	hwnd := g.add("button", 2, 0, 1, 1, "Button 3-C", "GroupBox 3")
-	hwnd := g.add("button", 3, 0, 1, 1, "Button 3-D", "GroupBox 3")
-	
-	Gui, +AlwaysOnTop
-	g.show()
+	hwnd := g.add("button", 0, 0, 1, 1, "Button 1-A", , , "GroupBox 1")
+	hwnd := g.add("button", 0, 1, 1, 1, "Button 1-B", , , "GroupBox 1")	
+ 
+	hwnd := g.add("button", 0, 0, 1, 1, "Button 2-A", , , "GroupBox 2")
+	hwnd := g.add("button", 1, 0, 1, 1, "Button 2-B", , , "GroupBox 2")
+	 
+	hwnd := g.add("button", 0, 0, 1, 1, "Button 3-A", , , "GroupBox 3")
+	hwnd := g.add("button", 1, 0, 1, 1, "Button 3-B", , , "GroupBox 3")
+	hwnd := g.add("button", 2, 0, 1, 1, "Button 3-C", , , "GroupBox 3")
+	hwnd := g.add("button", 3, 0, 1, 1, "Button 3-D", , , "GroupBox 3")
 	
 	Gui, +AlwaysOnTop
 	g.show()
-	MsgBox % "Attemnpting to resize..." 
-	g.scale(3)
 }
