@@ -41,18 +41,18 @@ class Element {
 		currentColumn := this.startingGridColumn
 		elementWidth := 0
 		while(currentColumn <= this.startingGridColumn + this.gridWidth - 1) {
-			elementWidth  += columnWidths[currentColumn++]
+			elementWidth  += columnWidths[currentColumn++] + margin
 		}
-		this.elementWidth := elementWidth + (this.controlType != "groupbox" ? margin * 2 : 0)
+		this.elementWidth := elementWidth
 	}
 	
 	setElementHeight(rowHeights, margin) {
 		currentRow := this.startingGridRow
 		elementHeight := 0
 		while(currentRow <= this.startingGridRow + this.gridHeight - 1) {
-			elementHeight  += rowHeights[currentRow++]
+			elementHeight  += rowHeights[currentRow++] + margin
 		}
-		this.elementHeight := elementHeight + (this.controlType = "groupbox" ? margin * 2 : 0)
+		this.elementHeight := elementHeight
 	}
 	
 	; Private - resize and reposition the Element by a the given `scaleFactor`
@@ -193,7 +193,8 @@ Class GroupBoxObject extends Element {
 			} else {
 				element := this.guiObjects[hwnd]
 					if(element.__Class = "GroupBoxObject") {
-						widthPerColumn :=  element.subGrid.totalWidth() / element.gridWidth
+						i := element.subGrid.grid[1].length() * 8 +  element.subGrid.margin / element.subGrid.grid[1].length()
+						widthPerColumn :=  element.subGrid.totalWidth() / element.gridWidth + i / 2
 					} else {
 						widthPerColumn := element.elementWidth / element.gridWidth
 					}
@@ -209,7 +210,7 @@ Class GroupBoxObject extends Element {
 		; by Elements and GridObjects in that row
 		totalHeight := 0
 		loop % this.grid.length()
-			totalHeight += this.calcMaxHeight(A_Index) 
+			totalHeight += this.calcMaxHeight(A_Index)
 		return totalHeight
 	}
 	
@@ -244,7 +245,8 @@ Class GroupBoxObject extends Element {
 			} else {
 				element := this.guiObjects[hwnd]
 					if(element.__Class = "GroupBoxObject") {
-						heightPerRow := element.subGrid.totalHeight() / element.gridHeight
+						i := element.subGrid.grid.length() * 50 +  element.subGrid.margin / element.subGrid.grid.length()
+						heightPerRow := element.subGrid.totalHeight() / element.gridHeight + i / 2
 					} else {
 						heightPerRow  := element.elementHeight / element.gridHeight
 					}
@@ -266,22 +268,12 @@ Class GroupBoxObject extends Element {
 		loop % this.grid.length() { ; Loop through each column
 			rowHeights.push(this.getRowHeight(A_Index))
 		}
-		for hwnd, element in this.guiObjects {
-			element.setElementWidth(columnWidths, this.margin)
-			element.setElementHeight(rowHeights, this.margin)
-		}
-		columnWidths := []
-		loop % this.grid[1].length() { ; Loop through each column
-			columnWidths.push(this.getColumnWidth(A_Index))
-		}
 		
-		rowHeights := []
-		loop % this.grid.length() { ; Loop through each column
-			rowHeights.push(this.getRowHeight(A_Index))
-		}
 		for hwnd, element in this.guiObjects {
 			element.setElementX(columnWidths, this.offsetX,  this.margin)
 			element.setElementY(rowHeights, this.offsetY, this.margin)
+			element.setElementWidth(columnWidths, this.margin)
+			element.setElementHeight(rowHeights, this.margin)
 			position := "x" element.elementX " y" element.elementY
 			. " w" element.elementWidth " h" element.elementHeight
 			GuiControl, move,% hwnd,% position
@@ -302,6 +294,7 @@ Class GroupBoxObject extends Element {
 	
 	; PRIVATE - Resize everything in the gui
 	resize(scaleFactor) {
+		;~ this.margin *= scaleFactor / this.grid.length()
 		for hwnd, element in this.guiObjects {
 			element.resize(scaleFactor)
 		}
@@ -340,4 +333,7 @@ main() {
 	
 	Gui, +AlwaysOnTop
 	g.show()
+
+	MsgBox % "Attemnpting to resize..." 
+	g.scale(.25)
 }
