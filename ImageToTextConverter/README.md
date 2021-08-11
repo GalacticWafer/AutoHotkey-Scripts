@@ -13,6 +13,7 @@
 #### - Make sure you have the latest stable version of AutoHotkey installed
 
 #### - Use the following commands to install Tesseract on WSL2:
+
     ```
 	sudo apt update -y && sudo apt upgrade -y
 	sudo apt install tesseract-ocr -y
@@ -20,6 +21,7 @@
     ```
 
 #### 4 - The next step authorizes "PDF" files to be changed to high-quality images. Do the same with all the different format types that you plan to extract text from.
+
     ```
 	sudo sed -i_bak 's/rights="none" pattern="PDF"/rights="read | write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
     ```
