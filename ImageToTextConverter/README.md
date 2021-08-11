@@ -14,17 +14,17 @@
 
 #### - Use the following commands to install Tesseract on WSL2:
 
-    ```
-	sudo apt update -y && sudo apt upgrade -y
-	sudo apt install tesseract-ocr -y
-	sudo apt install imagemagick -y 
-    ```
+```
+sudo apt update -y && sudo apt upgrade -y
+sudo apt install tesseract-ocr -y
+sudo apt install imagemagick -y 
+ ```
 
 #### 4 - The next step authorizes "PDF" files to be changed to high-quality images. Do the same with all the different format types that you plan to extract text from.
 
-    ```
-	sudo sed -i_bak 's/rights="none" pattern="PDF"/rights="read | write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
-    ```
+```
+sudo sed -i_bak 's/rights="none" pattern="PDF"/rights="read | write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
+```
 
 #### 5 - Now you can use AHK to run a bash script on Windows Subsystem for Linux which will take care of the actual ocr. AHK is basically just there to kick things off.
 
