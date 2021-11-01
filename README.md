@@ -1,3 +1,3 @@
 # AutoHotkey
 
-### A compilation of some of my favorite scripts in Windows machines.
+### An assortment of some of my favorite scripts in Windows machines.
