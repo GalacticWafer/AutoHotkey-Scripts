@@ -1,6 +1,7 @@
 #SingleInstance, force
 
 goto, mapRectangles
+
 mapRectangles:
 {
     splitModes := {}
