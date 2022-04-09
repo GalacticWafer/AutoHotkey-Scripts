@@ -57,7 +57,6 @@ mapRectangles:
     return
 }
 
-This will break the code
 mini:
 MsgBox % A_GuiControl
 Gui, gBottom: hide ; selected a button, so hide both 
