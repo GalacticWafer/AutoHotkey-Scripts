@@ -1,179 +1,311 @@
 #SingleInstance, force
+#Include Json.ahk
+
 
 goto, mapRectangles
 
 mapRectangles:
 {
-    splitModes := {}
-    splitModes["ThreeTall"] := [{"x": 0, "y": 0, "w": 1 / 3, "h": 1}, {"x": 1 / 3, "y": 0, "w": 1 / 3, "h": 1}, {"x": 2 / 3, "y": 0, "w": 1 / 3, "h": 1}]
-    splitModes["SplitTopBottom"] := [{"x": 0, "y": 0, "w": 1, "h": 1 / 2}, {"x": 0, "y": 1 / 2, "w": 1, "h": 1 / 2}]
-    maplen := 0 ;number of 'RectangleArrangement's
-    rectangles := [ ] ; holds a single 'RectangleArrangement'
+    splitModes := Json.Load(FileOpen(A_WorkingDir . "\SplitModes.json", "r").read())
+    numArrangements := 0 ;number of 'RectangleArrangement's
     arrangements := {} ; holds all the 'RectangleArrangement's
-    offset := 0 ; accumulates an offset of where to place the next set in the gui
-    scaleY := A_ScreenHeight / 16 ; scale for Rectangle.x fields
-    scaleX := A_ScreenWidth / ( 2 * (maplen > 6 ? maplen : 6)) ; scale for Rectangle.y fields
+    buttonHeight := A_ScreenHeight / 16 ; scale for Rectangle.x fields
+    buttonToScreenWidthRatio := A_ScreenWidth / Max(splitModes.Count(), 16)
     buttonWidth := A_ScreenWidth / 20 ; width for 'gTop' buttons
-    topButtonH := A_ScreenHeight / ( buttonWidth / A_ScreenWidth ) ; height for 'gTop buttons
+    topButtonH := A_ScreenHeight / (buttonWidth / A_ScreenWidth) ; height for 'gTop buttons
     default_color := 0xffffff
-    guiWidth := 0 ;start new buttons at 0
-    padding := buttonWidth / 20
+    buttonPaddingHorizontal := buttonWidth / 8
+    guiWidth := buttonPaddingHorizontal
+    xOffsetAccumulator := buttonPaddingHorizontal ; accumulates an offset of where to place the next arrangement's elements in the gui
     gui, gBottom: +AlwaysOnTop +Caption -ToolWindow
-
-    for arrangementName, measurements in splitModes { ; look into eack value in the associative array
-        for i, rect in measurements { ; look at all the arrays inside each value
-            if(i == 1) {
-                soloButtonPos := guiWidth
+    numArrangements := 0
+    defaultIconPath := "unchosen.png"
+    for arrangementName, arrangementDefinition in splitModes { ; look into each arrangement in the associative array
+        rectangles := [] ; holds all rectangles for a single 'RectangleArrangement'
+        for __, rectangleDefinition in arrangementDefinition { ; look at all the rectangles inside each arrangement
+            if(A_Index == 1) {
+                soloButtonPosition := guiWidth ; The x position of any arrangement when it is in "solo mode" is the same as the first arrangement's x position
             }
-            r := new Rectangle({"x": rect.x, "y": rect.y, "w": rect.w, "h": rect.h, "name": arrangementName  "_" A_Index
-            , "homePos": {"x": rect.x * scaleX + guiWidth, "y": rect.y * scaleY, "w": rect.w * scaleX, "h":  rect.h * scaleY}
-            , "soloPos": {"x": rect.x * scaleX, "y": rect.y * scaleY, "w": " w" rect.w * scaleX, "h":  rect.h * scaleY}})
-            rectangles.push(r)
-            h := r.homePos
-            gui, gBottom: add, button,% "hwnd" r.hwnd " v" r.name " gmini x" h.x " y" h.y " w" h.w " h"  h.h , % r.name
-            r.hwnd := rhwnd
-            r.homePos := recPos
-            r.soloPos := r.x * scaleX
-        }
-        a := new RectangleArrangement({"rectangles": rectangles, "len": i, "factor": scaleX, "name": arrangementName, "buttonPos": {"x": guiWidth, "y": padding, "w": scaleX, "h": topButtonH}, "soloButtonPos": {"x": soloButtonPos, "y": padding, "w": scaleX, "h": topButtonH}})
-        h := a.buttonPos
-        f := func("RectangleArrangement.setSoloPosition").bind(arrangements)
-        gui, gTop: add, Button,% " v" a.name " x" h.x " y" h.x " w" h.w " h" h.h " hwnd" a.hwnd  " g" f,% a.name
-        ;~ gui, gTop: add, button,% "hwnd" a.hwnd " v" a.name " gfirstTop x" h.x " y" h.x " w" h.w " h" h.h, % a.name
-        guiWidth += scaleX + padding
-        rectangles := [ ] ;empty the rectangles array for the next set, then push to array
-        arrangements[arrangementName] := a
-        maplen += 1
-    }
-    guiWidth += padding ; 
+            currentRectangle
+            := new Rectangle(rectangleDefinition
+                             ,A_Index
+                             ,arrangementName
+                             ,buttonToScreenWidthRatio
+                             ,guiWidth
+                             ,buttonHeight
+                             ,defaultIconPath)
 
+            gui, gBottom: add, Picture
+                        ,% "hwnd" currentRectangle.hwnd
+                            . " v" currentRectangle.name
+                            . " gmini x" currentRectangle.homePosition.x
+                            . " y" currentRectangle.homePosition.y
+                            . " w" currentRectangle.homePosition.w
+                            . " h" currentRectangle.homePosition.h
+                            , % defaultIconPath
+
+
+                    sideLength := Min(currentRectangle.w, currentRectangle.h)
+                    xCenter := (currentRectangle.w + currentRectangle.x) / 2
+                    yCenter := (currentRectangle.h + currentRectangle.y) / 2
+                    iconRectangleDefinition := {"x": xCenter,"y": yCenter,"w": sideLength,"h": sideLength}
+
+
+                    currentRectangle.icon
+                    := new Rectangle(iconRectangleDefinition
+                                     ,currentRectangle.name "_icon"
+                                     ,1
+                                     ,buttonToScreenWidthRatio
+                                     ,0
+                                     ,sideLength
+                                     ,currentRectangle.iconPath)
+
+                    gui, gBottom: add, Picture
+                                ,% "hwnd" currentRectangle.icon.hwnd
+                                    . " v" currentRectangle.icon.name
+                                    . " gmini x" currentRectangle.homePosition.x
+                                    . " y" currentRectangle.homePosition.y
+                                    . " w" currentRectangle.homePosition.w
+                                    . " h" currentRectangle.homePosition.h
+                                    , % "black.png"
+
+                    GuiControl, gBottom: hide,% currentRectangle.icon.name
+
+            rectangles.push(currentRectangle)
+        }
+
+        arrangement := new RectangleArrangement(rectangles
+                                               ,A_Index
+                                               ,buttonToScreenWidthRatio
+                                               ,arrangementName
+                                               ,guiWidth
+                                               ,buttonPaddingHorizontal
+                                               ,topButtonH
+                                               ,soloButtonPosition
+                                               ,buttonWidth)
+
+        gui, gTop: add, Button,% " v" arrangement.name
+                               . " x" arrangement.homePosition.x
+                               . " y" arrangement.homePosition.y
+                               . " w" arrangement.homePosition.w
+                               . " h" arrangement.homePosition.h
+                               . " hwnd" arrangement.hwnd
+                               . " gchooseArrangement"
+                ,% arrangement.name
+
+        ;~ gui, gTop: add, button,% "hwnd" a.hwnd " v" a.name " gfirstTop x" h.x " y" h.x " w" h.w " h" h.guiWidth, % a.name
+        guiWidth += buttonToScreenWidthRatio + buttonPaddingHorizontal
+        rectangles := [ ] ;empty the rectangles array for the next set, then push to array
+        arrangements[arrangementName] := arrangement
+        numArrangements += 1
+    }
+
+    gui, gBottom: Color, 000000
     gui, gBottom: +AlwaysOnTop +Caption -ToolWindow -Border
     gui, gTop: +AlwaysOnTop +Caption -ToolWindow -Border
-    Gui, gBottom: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - scaleY " w" guiWidth " h" scaleY, gBottom
-    Gui, gTop: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - scaleY " w" guiWidth " h" scaleY, gTop
+    Gui, gBottom: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - buttonHeight " w" guiWidth " h" buttonHeight, gBottom
+    Gui, gTop: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - buttonHeight " w" guiWidth " h" buttonHeight, gTop
     WinSet, Transparent, 1, gTop
-    ;~ Gui, gBottom: hide
-    ;~ Gui, gTop: Hide
+    Gui, gBottom: hide
+    Gui, gTop: Hide
+    return
+}
+
+chooseArrangement() {
+    global gBottom ; Declare global variables to be used within the function
+    global gTop
+    chosenArrangement := RectangleArrangement.selectArrangement(A_GuiControl)
+    chosenArrangement.splitScreen()
     return
 }
 
 mini:
-MsgBox % A_GuiControl
-Gui, gBottom: hide ; selected a button, so hide both 
+Gui, gBottom: hide ; selected a button, so hide both
 Gui, gTop: Hide
 return
+
 mini(controlName, offsetX) {
     GuiControlGet, miniposition, Pos, %controlName%
     minipositionX -= offsetX
     return minipositionX
 }
 
-moveWindows(arrangements) {
-    global gBottom
-    global gTop
-    SetTitleMatchMode, 2
-    for _, r in  % arrangements[A_GuiControl].rectangles {
-        send, ^!{Tab}
-        sleep, 300
-        WinWaitNotActive, Task Switching
-        WinGetActiveTitle, t
-        r.window := t
-    }
-    for _, r in a.rectangles {
-        r.moveWindow()
-    }
-    Hotkey, ^!Tab, on
-    Gui, gBottom: hide ; selected a button, so hide both 
-    Gui, gTop: Hide
-    return
-}
 
-GuiControlGet, %A_GUIControl%position, Pos, %A_GuiControl%
-newX := %A_GUIControl%positionW
-for key, val in arrangements {
-    if !(InStr(  A_GuiControl,val.name ) ) { ; Find out if the RectangleArrangement goes with the pressed button
-        controlName := val.name ; If not, hide the translucent button that goes with that RectangleArrangement
-        GuiControl, gTop: Hide, %controlName%
-        for k, v in val.rectangles {
-            GuiControl, gBottom: Hide, % v.name ; hide all the Rectangles inside that Rectangle Arrangement
-        }
-    } 
-    else { ; The only one that will remain goes with the clicked Rectangle Arrangement
-        controlName := val.name
-        GuiControlGet, gTopposition, Pos, %controlName% ; move it over to x0
-        gToppositionX -= newX
-        GuiControl, Move, %controlName%, x%gToppositionX% y%gToppositionY% w%gToppositionW% h%gToppositionH%
-        WinActivate, gBottom ; do the same for its Rectangles
-        ;*** This loop has all the trouble!!
-        for k, v in val.rectangles {
-            controlName := v.name
-            GuiControlGet, OutputVar, Pos , % v.name
-            GuiControl, Move, %controlName%, x
-        }
-    }
-}
-GuiControl, MoveDraw, %A_GuiControl%, % "-x"  %newX%
-Gui, gTop: Show, xCenter y%scaleY% w%A_ScreenWidth% h%scaleY%
-Gui, gBottom: Show, xCenter y%scaleY% w%A_ScreenWidth% h%scaleY%
-return
 Escape::ExitApp
 
 Class RectangleArrangement {
-    __New(params)
+    __New(rectangles, length, buttonToScreenWidthRatio, arrangementName, guiWidth, buttonPaddingHorizontal, topButtonHeight, soloButtonPositionX, buttonWidth)
     {
-        for key, value in params{
-            this[key] := value
-        }
+        this.rectangles := rectangles
+        this.length := length
+        this.buttonToScreenWidthRatio := buttonToScreenWidthRatio
+        this.name := arrangementName
+        this.homePosition := {}
+        this.homePosition.x := guiWidth
+        this.homePosition.y := buttonPaddingHorizontal
+        this.homePosition.w := buttonToScreenWidthRatio
+        this.homePosition.h := topButtonHeight
+        this.soloPosition := {}
+        this.soloPosition.x := soloButtonPositionX
+        this.soloPosition.w := buttonWidth
+
+        this.arrangements := ""
         this.hwnd := "h_" this.name
     }
-    
-    setSoloPosition(bool) {
-        if(bool) {
-            for k, r in this.rectangles {
-                GuiControl, Move, r.name,% "x" r.soloPos " y" r.y " w" r.w " h" r.h
-            }
-        } else {
-            for k, r in this.rectangles {
-                GuiControl, Move, r.name,% "x" r.x " y" r.y " w" r.w " h" r.h
+
+    handleSplitScreenEvent() {
+        global gTop
+        global gBottom
+        global guiWidth
+        global buttonHeight
+
+        Gui, gBottom: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - buttonHeight " w" guiWidth " h" buttonHeight, gBottom
+        Gui, gTop: Show,% "xCenter y" A_ScreenHeight * 15 / 16 - buttonHeight " w" guiWidth " h" buttonHeight, g
+        WinActivate, gTop
+        Hotkey, ^!Tab, off
+    }
+
+    selectArrangement(selectedArrangementName) {
+        global arrangements
+        global buttonWidth
+        global buttonHeight
+        selectedArrangement := arrangements[selectedArrangementName]
+        ;~ MsgBox % "You chose " selectedArrangementName
+        for arrantementName, arrangement in arrangements {
+            if(selectedArrangement.name != arrantementName) {
+                arrangement.setVisible(false)
             }
         }
+        buttonWidth := selectedArrangement.setSoloPosition(true)
+        Gui, gTop: hide
+        GuiControl, MoveDraw,% this.hwnd, x0
+        Gui, gBottom: Show,% "AutoSize xCenter"
+        return selectedArrangement
     }
-    
+
+    setSoloPosition(isSelectedArrangement) {
+        if(isSelectedArrangement) {
+            for k, r in this.rectangles {
+                newPosition := r.hwnd " "  r.name
+                GuiControl, gBottom: movedraw
+                                    , % r.name
+                                    ,% "x" r.soloPosition.x
+            }
+        } else {
+            arrangement.setVisible(false)
+        }
+        return this.soloPosition.w
+    }
+
     setVisible(bool) {
         if(bool) {
-            for k, v in this.rectangles {
-                GuiControl, gBottom: Show,% v.name
+            for rectangleIndex, currentRectangle in this.rectangles {
+                GuiControl, gBottom: Show,% currentRectangle.name
             }
             GuiControl, gTop: Show,% this.name
         } else {
-            for k, v in this.rectangles {
-                GuiControl, gBottom: Hide,% v.name
+            for rectangleIndex, currentRectangle in this.rectangles {
+                GuiControl, gBottom: Hide,% currentRectangle.name
             }
             GuiControl, gTop: Hide,% this.name
+        }
+    }
+
+    splitScreen() {
+        global gBottom ; Declare global variables to be used within the function
+        global gTop
+
+        SetTitleMatchMode, 2 ; Set the title match mode to match any part of the window title
+
+        for rectangleIndex, currentRectangle in  % this.rectangles { ; loop through the rectangles in the selected arrangement
+            send, ^!{Tab} ; Send a Ctrl+Alt+Tab keystroke to activate task switching
+            sleep, 300 ; wait for 300ms to ensure the window switcher has appeared
+            WinWaitNotActive, Task Switching ; Wait for the task switcher to disappear
+            currentRectangle.updateIcon()
+            WinGetActiveTitle, t ; Get the title of the currently active window
+            currentRectangle.window := t ; Assign the title to the "window" property of the rectangle object
+        }
+
+        for _, currentRectangle in this.rectangles { ; loop through all the rectangles in the arrangement (including those that weren't selected)
+            currentRectangle.moveWindow() ; Call the "moveWindow" method on each rectangle to move its associated window
+        }
+
+        Hotkey, ^!Tab, on ; Turn on the hotkey for Ctrl+Alt+Tab
+        Gui, gBottom: hide ; Hide the bottom panel (which contains the buttons to select the arrangements)
+        Gui, gTop: Hide ; Hide the top panel (which contains the buttons to toggle the hotkeys)
+
+        this.restoreGui()
+
+        return ; End the function
+    }
+
+    restoreGui() {
+        global arrangements
+
+        for arrantementName, arrangement in arrangements {
+            arrangement.setSoloPosition(false)
+            arrangement.setVisible(true)
         }
     }
 }
 
 Class Rectangle {
-    __New(params)
-    {
-        for key, value in params{
-            this[key] := value
-        }
+    __New(rectangleDefinition
+         ,name
+         ,index
+         ,buttonToScreenWidthRatio
+         ,buttonTranslationX
+         ,buttonHeight
+         ,iconPath) {
+
+        global gBottom
+        global gTop
+
+        this.x := rectangleDefinition.x
+        this.y := rectangleDefinition.y
+        this.w := rectangleDefinition.w
+        this.h := rectangleDefinition.h
+        this.index := index
+        this.name := name "_" this.index
         this.hwnd := "h_" this.name
+        this.homePosition := {}
+        this.homePosition.x := rectangleDefinition.x * buttonToScreenWidthRatio + buttonTranslationX
+        this.homePosition.y := rectangleDefinition.y * buttonHeight
+        this.homePosition.w := rectangleDefinition.w * buttonToScreenWidthRatio
+        this.homePosition.h := rectangleDefinition.h * buttonHeight
+        this.soloPosition := {}
+        this.soloPosition.x := rectangleDefinition.x * buttonToScreenWidthRatio
+        this.soloPosition.y := rectangleDefinition.y * buttonHeight
+        this.soloPosition.w := rectangleDefinition.w * buttonToScreenWidthRatio
+        this.soloPosition.h := rectangleDefinition.h * buttonHeight
+        this.iconPath := iconPath
+        this.defaultIconPath := iconPath
+        this.buttonTranslationX := buttonTranslationX
+        this.icon := {}
     }
+
+    updateIcon() {
+        WinGetClass, WinClass, A
+        WinGet, iconPath, ProcessPath, ahk_class %WinClass%
+        this.icon.iconPath := iconPath
+
+        sideLength := Min(this.soloPosition.w, this.soloPosition.h)
+        xCenter := this.soloPosition.x + this.soloPosition.w / 2
+        yCenter := this.soloPosition.y + this.soloPosition.h / 2
+        MsgBox % this.icon.iconPath
+        GuiControl,gBottom:,% this.name,% "chosen.png"
+        GuiControl,gBottom:,% this.icon.name,% this.icon.iconPath
+        GuiControl,gBottom: movedraw,% this.icon.name,% "x" xCenter - sideLength / 2 " y" yCenter - sideLength / 2 " w" sideLength " h" sideLength
+        GuiControl, gBottom: show,% this.icon.name
+    }
+
     moveWindow() {
-        x :=  this.x * A_ScreenWidth
+        x := this.x * A_ScreenWidth
         y := this.y * A_ScreenHeight
         w := this.w * A_ScreenWidth
         h := this.h * A_ScreenHeight
-        WinMove,% this.window,,%x%,%y%, %w% ,%h%
+        WinMove,% this.window,,% x,% y,% w ,% h
         this.window := ""
     }
 }
-^!Tab::
-gui, gBottom: show, xCenter y%scaleY% w%guiWidth%, gBottom
-gui, gTop: show, xCenter y300 w%guiWidth% h%scaleY%, gTop
-WinActivate, gTop
-Hotkey, ^!Tab, off
-return
+^!Tab::RectangleArrangement.handleSplitScreenEvent()
